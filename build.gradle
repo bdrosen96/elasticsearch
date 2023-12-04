@@ -177,8 +177,8 @@ if (bwc_tests_enabled == false) {
   println "See ${bwc_tests_disabled_issue}"
   println "==========================================================="
 }
-if (project.gradle.startParameter.taskNames.find { it.startsWith("checkPart") } != null) {
-  // Disable BWC tests for checkPart* tasks as it's expected that this will run un it's own check
+if (project.gradle.startParameter.taskNames.any { it.startsWith("checkPart") || it == 'functionalTests' }) {
+  // Disable BWC tests for checkPart* tasks and platform support tests as it's expected that this will run on it's own check
   bwc_tests_enabled = false
 }
 
@@ -249,6 +249,8 @@ allprojects {
     for (String taskname : tasknames) {
       project.tasks.named(taskname).configure { enabled = false }
     }
+
+    tasks.register('functionalTests') { dependsOn 'check'}
   }
 
   /*
@@ -312,13 +314,6 @@ tasks.register("branchConsistency") {
 tasks.named("wrapper").configure {
   distributionType = 'ALL'
   doLast {
-    final DistributionLocator locator = new DistributionLocator()
-    final GradleVersion version = GradleVersion.version(wrapper.gradleVersion)
-    final URI distributionUri = locator.getDistributionFor(version, wrapper.distributionType.name().toLowerCase(Locale.ENGLISH))
-    final URI sha256Uri = new URI(distributionUri.toString() + ".sha256")
-    final String sha256Sum = new String(sha256Uri.toURL().bytes)
-    wrapper.getPropertiesFile() << "distributionSha256Sum=${sha256Sum}\n"
-    println "Added checksum to wrapper properties"
     // copy wrapper properties file to build-tools-internal to allow seamless idea integration
     def file = new File("build-tools-internal/gradle/wrapper/gradle-wrapper.properties")
     Files.copy(wrapper.getPropertiesFile().toPath(), file.toPath(), REPLACE_EXISTING)
